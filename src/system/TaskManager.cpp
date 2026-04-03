@@ -4,7 +4,7 @@
 #include "freertos/task.h"
 
 #include "display/DisplayTask.h"
-#include "processing/ProcessingTask.h"
+#include "processing/DataProcessor.h"
 #include "sensors/RoomTempTask.h"
 #include "system/Config.h"
 
@@ -31,8 +31,8 @@ bool createTasks() {
     return false;
   }
 
-  if (xTaskCreate(ProcessingTask,
-                  "ProcessingTask",
+  if (xTaskCreate(DataProcessorTask,
+                  "DataProcessor",
                   stackBytesToWords(
                       SleepSentinel::Config::kProcessingTaskStackBytes),
                   nullptr,

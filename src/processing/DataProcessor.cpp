@@ -1,4 +1,4 @@
-#include "ProcessingTask.h"
+#include "DataProcessor.h"
 
 #include <Arduino.h>
 
@@ -6,7 +6,7 @@
 #include "system/Queues.h"
 #include "system/SystemState.h"
 
-void ProcessingTask(void* pvParameters) {
+void DataProcessorTask(void* pvParameters) {
   (void)pvParameters;
 
   RoomClimateReading reading = {0.0f, 0.0f, false};
