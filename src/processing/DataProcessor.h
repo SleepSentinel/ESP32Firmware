@@ -1,3 +1,3 @@
 #pragma once
 
-void DataProcessorTask(void *pvParameters);
+void DataProcessorTask(void* pvParameters);

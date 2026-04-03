@@ -7,6 +7,8 @@ struct SystemState {
   int spo2;
   float bodyTemperature;
   float roomTemperature;
+  float roomHumidity;
+  bool roomSensorOk;
   bool isMoving;
   bool isCrying;
   int airQuality;
@@ -23,4 +25,7 @@ struct SystemState {
 extern SystemState systemState;
 extern SemaphoreHandle_t stateMutex;
 
-void initSystemState();
+bool initSystemState();
+void setRoomClimateReading(float temperatureC, float humidityPercent);
+void setRoomClimateError();
+SystemState getSystemStateSnapshot();

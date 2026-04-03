@@ -1,27 +1,26 @@
 #include "DataProcessor.h"
 
-// FreeRTOS
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
-
-// System modules
+#include "sensors/RoomTempSensor.h"
 #include "system/Queues.h"
 #include "system/SystemState.h"
 
-void DataProcessorTask(void *pvParameters) {
-  int hr;
-  int spo2;
-  float bodyTemp;
-  float roomTemp;
-  bool motion;
-  int sound;
-  int air;
+void DataProcessorTask(void* pvParameters) {
+  (void)pvParameters;
 
-  while (1) {
+  int hr = 0;
+  int spo2 = 0;
+  float bodyTemp = 0.0f;
+  float roomTemp = 0.0f;
+  bool motion = false;
+  int sound = 0;
+  int air = 0;
+  RoomClimateReading roomClimateReading = {0.0f, 0.0f, false};
 
-    // Heart Rate
-    if (xQueueReceive(hrQueue, &hr, 0)) {
+  while (true) {
+    if (xQueueReceive(hrQueue, &hr, 0) == pdPASS) {
       xSemaphoreTake(stateMutex, portMAX_DELAY);
 
       systemState.heartRate = hr;
@@ -31,8 +30,7 @@ void DataProcessorTask(void *pvParameters) {
       xSemaphoreGive(stateMutex);
     }
 
-    // SpO2
-    if (xQueueReceive(spo2Queue, &spo2, 0)) {
+    if (xQueueReceive(spo2Queue, &spo2, 0) == pdPASS) {
       xSemaphoreTake(stateMutex, portMAX_DELAY);
 
       systemState.spo2 = spo2;
@@ -40,30 +38,27 @@ void DataProcessorTask(void *pvParameters) {
       xSemaphoreGive(stateMutex);
     }
 
-    // Body Temperature
-    if (xQueueReceive(bodyTempQueue, &bodyTemp, 0)) {
+    if (xQueueReceive(bodyTempQueue, &bodyTemp, 0) == pdPASS) {
       xSemaphoreTake(stateMutex, portMAX_DELAY);
 
       systemState.bodyTemperature = bodyTemp;
-      systemState.alertHighBodyTemp = (bodyTemp > 38.0);
-      systemState.alertLowBodyTemp = (bodyTemp < 35.0);
+      systemState.alertHighBodyTemp = (bodyTemp > 38.0f);
+      systemState.alertLowBodyTemp = (bodyTemp < 35.0f);
 
       xSemaphoreGive(stateMutex);
     }
 
-    // Room Temperature
-    if (xQueueReceive(roomTempQueue, &roomTemp, 0)) {
+    if (xQueueReceive(roomTempQueue, &roomTemp, 0) == pdPASS) {
       xSemaphoreTake(stateMutex, portMAX_DELAY);
 
       systemState.roomTemperature = roomTemp;
-      systemState.alertHighRoomTemp = (roomTemp > 30.0);
-      systemState.alertLowRoomTemp = (roomTemp < 18.0);
+      systemState.alertHighRoomTemp = (roomTemp > 30.0f);
+      systemState.alertLowRoomTemp = (roomTemp < 18.0f);
 
       xSemaphoreGive(stateMutex);
     }
 
-    // Motion
-    if (xQueueReceive(motionQueue, &motion, 0)) {
+    if (xQueueReceive(motionQueue, &motion, 0) == pdPASS) {
       xSemaphoreTake(stateMutex, portMAX_DELAY);
 
       systemState.isMoving = motion;
@@ -71,22 +66,29 @@ void DataProcessorTask(void *pvParameters) {
       xSemaphoreGive(stateMutex);
     }
 
-    // Sound → Cry detection
-    if (xQueueReceive(soundQueue, &sound, 0)) {
+    if (xQueueReceive(soundQueue, &sound, 0) == pdPASS) {
       xSemaphoreTake(stateMutex, portMAX_DELAY);
 
-      systemState.isCrying = (sound > 70); // threshold
+      systemState.isCrying = (sound > 70);
 
       xSemaphoreGive(stateMutex);
     }
 
-    // Air Quality
-    if (xQueueReceive(airQueue, &air, 0)) {
+    if (xQueueReceive(airQueue, &air, 0) == pdPASS) {
       xSemaphoreTake(stateMutex, portMAX_DELAY);
 
       systemState.airQuality = air;
 
       xSemaphoreGive(stateMutex);
+    }
+
+    if (xQueueReceive(roomClimateQueue, &roomClimateReading, 0) == pdPASS) {
+      if (roomClimateReading.isValid) {
+        setRoomClimateReading(roomClimateReading.temperatureC,
+                              roomClimateReading.humidityPercent);
+      } else {
+        setRoomClimateError();
+      }
     }
 
     vTaskDelay(pdMS_TO_TICKS(10));
