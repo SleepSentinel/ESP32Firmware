@@ -1,20 +1,41 @@
 #include <Arduino.h>
 
-// System
+#include "system/Config.h"
 #include "system/Queues.h"
 #include "system/SystemState.h"
 #include "system/TaskManager.h"
 
-void setup() {
-  // Initialize shared resources
-  initQueues();
-  initSystemState();
+namespace {
 
-  // Create all FreeRTOS tasks
-  createTasks();
+[[noreturn]] void haltWithError(const char* message) {
+  Serial.println(message);
+  while (true) {
+    vTaskDelay(pdMS_TO_TICKS(1000));
+  }
+}
+
+}  // namespace
+
+void setup() {
+  Serial.begin(SleepSentinel::Config::kSerialBaudRate);
+  delay(200);
+  Serial.println("SleepSentinel boot");
+
+  if (!initQueues()) {
+    haltWithError("Queue initialization failed");
+  }
+
+  if (!initSystemState()) {
+    haltWithError("System state initialization failed");
+  }
+
+  if (!createTasks()) {
+    haltWithError("Task creation failed");
+  }
+
+  Serial.println("Sprint 1 tasks started");
 }
 
 void loop() {
-  // Idle loop (FreeRTOS handles everything)
   vTaskDelay(pdMS_TO_TICKS(1000));
 }
