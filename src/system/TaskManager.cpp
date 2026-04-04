@@ -5,6 +5,7 @@
 
 #include "display/DisplayTask.h"
 #include "processing/DataProcessor.h"
+#include "sensors/PulseOximeterTask.h"
 #include "sensors/RoomTempTask.h"
 #include "system/Config.h"
 
@@ -17,9 +18,20 @@ configSTACK_DEPTH_TYPE stackBytesToWords(uint16_t stackBytes) {
 }  // namespace
 
 bool createTasks() {
+  TaskHandle_t pulseOximeterTaskHandle = nullptr;
   TaskHandle_t roomTempTaskHandle = nullptr;
   TaskHandle_t processingTaskHandle = nullptr;
   TaskHandle_t displayTaskHandle = nullptr;
+
+  if (xTaskCreate(PulseOximeterTask,
+                  "PulseOximeterTask",
+                  stackBytesToWords(
+                      SleepSentinel::Config::kPulseOximeterTaskStackBytes),
+                  nullptr,
+                  SleepSentinel::Config::kPulseOximeterTaskPriority,
+                  &pulseOximeterTaskHandle) != pdPASS) {
+    return false;
+  }
 
   if (xTaskCreate(RoomTempTask,
                   "RoomTempTask",
@@ -28,6 +40,7 @@ bool createTasks() {
                   nullptr,
                   SleepSentinel::Config::kRoomTempTaskPriority,
                   &roomTempTaskHandle) != pdPASS) {
+    vTaskDelete(pulseOximeterTaskHandle);
     return false;
   }
 
@@ -39,6 +52,7 @@ bool createTasks() {
                   SleepSentinel::Config::kProcessingTaskPriority,
                   &processingTaskHandle) != pdPASS) {
     vTaskDelete(roomTempTaskHandle);
+    vTaskDelete(pulseOximeterTaskHandle);
     return false;
   }
 
@@ -51,6 +65,7 @@ bool createTasks() {
                   &displayTaskHandle) != pdPASS) {
     vTaskDelete(processingTaskHandle);
     vTaskDelete(roomTempTaskHandle);
+    vTaskDelete(pulseOximeterTaskHandle);
     return false;
   }
 

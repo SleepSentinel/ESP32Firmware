@@ -34,6 +34,7 @@ void DataProcessorTask(void* pvParameters) {
       xSemaphoreTake(stateMutex, portMAX_DELAY);
 
       systemState.spo2 = spo2;
+      systemState.alertLowSpO2 = (spo2 < 95);
 
       xSemaphoreGive(stateMutex);
     }

@@ -16,6 +16,7 @@ struct SystemState {
   // Alerts
   bool alertHighHR;
   bool alertLowHR;
+  bool alertLowSpO2;
   bool alertHighBodyTemp;
   bool alertLowBodyTemp;
   bool alertHighRoomTemp;
