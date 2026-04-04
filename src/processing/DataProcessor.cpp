@@ -5,6 +5,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
+#include "sensors/MotionSensor.h"
 #include "sensors/RoomTempSensor.h"
 #include "system/Queues.h"
 #include "system/SystemState.h"
@@ -16,7 +17,7 @@ void DataProcessorTask(void* pvParameters) {
   int spo2 = 0;
   float bodyTemp = 0.0f;
   float roomTemp = 0.0f;
-  bool motion = false;
+  MotionReading motionReading = {0.0f, 0.0f, 0.0f, false};
   int sound = 0;
   int air = 0;
   RoomClimateReading roomClimateReading = {0.0f, 0.0f, false};
@@ -69,10 +70,20 @@ void DataProcessorTask(void* pvParameters) {
       xSemaphoreGive(stateMutex);
     }
 
-    if (xQueueReceive(motionQueue, &motion, 0) == pdPASS) {
+    if (xQueueReceive(motionQueue, &motionReading, 0) == pdPASS) {
       xSemaphoreTake(stateMutex, portMAX_DELAY);
 
-      systemState.isMoving = motion;
+      if (motionReading.isValid) {
+        systemState.motionAccelX = motionReading.accelX;
+        systemState.motionAccelY = motionReading.accelY;
+        systemState.motionAccelZ = motionReading.accelZ;
+        systemState.motionSensorOk = true;
+      } else {
+        systemState.motionAccelX = 0.0f;
+        systemState.motionAccelY = 0.0f;
+        systemState.motionAccelZ = 0.0f;
+        systemState.motionSensorOk = false;
+      }
 
       xSemaphoreGive(stateMutex);
     }

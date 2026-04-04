@@ -19,7 +19,7 @@ namespace {
 
 void setup() {
   Serial.begin(SleepSentinel::Config::kSerialBaudRate);
-  delay(500); //for wifi connection
+  delay(500);  // for wifi connection
   Serial.println("SleepSentinel boot (RTOS mode)");
 
   Wire.begin(SleepSentinel::Config::kI2cSdaPin,
