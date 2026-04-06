@@ -18,8 +18,8 @@ namespace {
 
 void setup() {
   Serial.begin(SleepSentinel::Config::kSerialBaudRate);
-  delay(200);
-  Serial.println("SleepSentinel boot");
+  delay(500); //for wifi connection
+  Serial.println("SleepSentinel boot (RTOS mode)");
 
   if (!initQueues()) {
     haltWithError("Queue initialization failed");
@@ -34,6 +34,7 @@ void setup() {
   }
 
   Serial.println("Sprint 1 tasks started");
+  Serial.println("All tasks including WebServerTask initialized");
 }
 
 void loop() {
