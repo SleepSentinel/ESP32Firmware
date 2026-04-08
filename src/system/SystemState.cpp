@@ -23,9 +23,11 @@ SystemState defaultSystemState() {
 }
 }  // namespace
 
+//Global Shared state by all tasks protected with a semaphore -> prevents race conditions 
 SystemState systemState = defaultSystemState();
 SemaphoreHandle_t stateMutex = nullptr;
 
+// The Mutex Lock
 bool initSystemState() {
   systemState = defaultSystemState();
 
@@ -36,6 +38,7 @@ bool initSystemState() {
   return stateMutex != nullptr;
 }
 
+// Locks System State -> Updates shared state -> Unlocks System State
 void setRoomClimateReading(float temperatureC, float humidityPercent) {
   if (stateMutex != nullptr) {
     xSemaphoreTake(stateMutex, portMAX_DELAY);
@@ -62,6 +65,8 @@ void setRoomClimateError() {
   }
 }
 
+// Waits forever until mutex is free -> data is not being change = safe to read
+// returns latest copy of System State -> server gets a copy
 SystemState getSystemStateSnapshot() {
   if (stateMutex != nullptr) {
     xSemaphoreTake(stateMutex, portMAX_DELAY);
