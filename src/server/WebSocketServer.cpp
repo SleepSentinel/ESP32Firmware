@@ -1,5 +1,6 @@
 #include "WebSocketServer.h"
 #include "server/MessageFormatter.h"
+#include "system/SystemState.h" 
 
 // Constructor
 // React Native app connects to ws://<ESP32_IP>/ws
@@ -9,9 +10,7 @@ WebSocketServer::WebSocketServer(uint16_t port)
 // Starts server
 void WebSocketServer::begin() {
     setupWebSocket();
-
     server.addHandler(&ws);
-
     server.begin();
 
     Serial.println("WebSocket server started");
@@ -47,24 +46,29 @@ void WebSocketServer::setupWebSocket() {
 
 // Handle Incoming Messages from Client
 void WebSocketServer::handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
-    // For now, we ignore incoming messages
+    // Not used for now (read-only system)
 }
 
-//Dummy Data to be replace by struct SystemState in src/system/SystemState.h
-String WebSocketServer::generateDummyData() {
-    return MessageFormatter::dummyJson();
-}
-
-//Broadcast Loop -> send data to client
+// Broadcast Loop -> sends data to client
 void WebSocketServer::run() {
     static unsigned long lastSend = 0;
 
     unsigned long now = millis();
 
     if (now - lastSend > 1000) {
-        ws.textAll(generateDummyData());
+
+        // Gets thread-safe snapshot
+        SystemState state = getSystemStateSnapshot();
+
+        // Convert to JSON
+        String json = MessageFormatter::toJson(state);
+
+        // Sends to all connected clients
+        ws.textAll(json);
+
         lastSend = now;
     }
 
+    // Clean disconnected clients
     ws.cleanupClients();
 }
