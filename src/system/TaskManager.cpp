@@ -76,6 +76,7 @@ bool createTasks() {
                   nullptr,
                   SleepSentinel::Config::kRoomTempTaskPriority,
                   &roomTempTaskHandle) != pdPASS) {
+    vTaskDelete(webServerTaskHandle);
     return false;
   }
 
@@ -87,6 +88,7 @@ bool createTasks() {
                   SleepSentinel::Config::kProcessingTaskPriority,
                   &processingTaskHandle) != pdPASS) {
     vTaskDelete(roomTempTaskHandle);
+    vTaskDelete(webServerTaskHandle);
     return false;
   }
 
@@ -99,6 +101,7 @@ bool createTasks() {
                   &displayTaskHandle) != pdPASS) {
     vTaskDelete(processingTaskHandle);
     vTaskDelete(roomTempTaskHandle);
+    vTaskDelete(webServerTaskHandle);
     return false;
   }
 
