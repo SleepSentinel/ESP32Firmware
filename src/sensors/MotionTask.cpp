@@ -8,13 +8,8 @@
 
 namespace {
 
-void logReading(const MotionReading& reading) {
-  Serial.print("Motion accel (m/s^2): x=");
-  Serial.print(reading.accelX, 2);
-  Serial.print(", y=");
-  Serial.print(reading.accelY, 2);
-  Serial.print(", z=");
-  Serial.println(reading.accelZ, 2);
+MotionReading invalidReading() {
+  return {0.0f, 0.0f, 0.0f, false};
 }
 
 }  // namespace
@@ -23,17 +18,34 @@ void MotionTask(void* pvParameters) {
   (void)pvParameters;
 
   MotionSensor motionSensor;
-  motionSensor.begin();
+  bool motionSensorReady = motionSensor.begin();
+
+  if (motionSensorReady) {
+    Serial.println("Motion sensor initialization succeeded");
+  } else {
+    Serial.println("Motion sensor initialization failed, will retry");
+  }
 
   TickType_t lastWakeTime = xTaskGetTickCount();
 
   while (true) {
-    const MotionReading reading = motionSensor.read();
+    MotionReading reading = invalidReading();
 
-    if (reading.isValid) {
-      logReading(reading);
-    } else {
-      Serial.println("Motion sensor read failed");
+    if (!motionSensorReady) {
+      motionSensorReady = motionSensor.begin();
+
+      if (motionSensorReady) {
+        Serial.println("Motion sensor initialization succeeded");
+      } else {
+        Serial.println("Motion sensor initialization retry failed");
+      }
+    }
+
+    if (motionSensorReady) {
+      reading = motionSensor.read();
+      if (!reading.isValid) {
+        Serial.println("Motion sensor read failed after successful init");
+      }
     }
 
     if (motionQueue == nullptr || xQueueSend(motionQueue, &reading, 0) != pdPASS) {

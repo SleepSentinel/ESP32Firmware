@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Adafruit_MPU6050.h>
+#include <stdint.h>
 
 struct MotionReading {
   float accelX;
@@ -14,9 +14,10 @@ class MotionSensor {
   MotionSensor();
 
   bool begin();
-  MotionReading read();
+ MotionReading read();
 
  private:
-  Adafruit_MPU6050 mpu_;
+  float accelLsbPerG() const;
+  uint8_t detectedDeviceId_;
   bool initialized_;
 };

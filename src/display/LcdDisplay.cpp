@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "system/Config.h"
+#include "system/I2cBus.h"
 
 namespace {
 
@@ -34,9 +35,15 @@ LcdDisplay::LcdDisplay()
       lastLine1_{0} {}
 
 void LcdDisplay::begin() {
+  if (!lockI2cBus(portMAX_DELAY)) {
+    return;
+  }
+
   lcd_.init();
   lcd_.backlight();
   lcd_.clear();
+
+  unlockI2cBus();
 }
 
 void LcdDisplay::showStartup() {
@@ -73,8 +80,14 @@ void LcdDisplay::updateLine(uint8_t row,
     return;
   }
 
+  if (!lockI2cBus(portMAX_DELAY)) {
+    return;
+  }
+
   lcd_.setCursor(0, row);
   lcd_.print(nextLine);
+  unlockI2cBus();
+
   strncpy(cachedLine, nextLine, 17);
   cachedLine[16] = '\0';
 }

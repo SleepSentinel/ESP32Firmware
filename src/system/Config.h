@@ -6,6 +6,31 @@
 namespace SleepSentinel {
 namespace Config {
 
+enum class MotionSensitivity : uint8_t {
+  Low,
+  Medium,
+  High,
+};
+
+struct MotionDetectionParameters {
+  float threshold;
+  uint8_t debounceCount;
+};
+
+constexpr MotionSensitivity kMotionSensitivity = MotionSensitivity::Medium;
+
+constexpr MotionDetectionParameters motionDetectionParametersFor(
+    MotionSensitivity sensitivity) {
+  return sensitivity == MotionSensitivity::Low
+             ? MotionDetectionParameters{1.5f, 3}
+             : (sensitivity == MotionSensitivity::High
+                    ? MotionDetectionParameters{0.6f, 2}
+                    : MotionDetectionParameters{1.0f, 2});
+}
+
+constexpr MotionDetectionParameters kMotionDetectionParameters =
+    motionDetectionParametersFor(kMotionSensitivity);
+
 constexpr uint32_t kSerialBaudRate = 115200;
 constexpr uint8_t kDhtDataPin = 4;
 constexpr uint8_t kDhtSensorType = 22;
