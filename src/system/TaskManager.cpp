@@ -30,6 +30,7 @@ void WebServerTask(void* pvParameters) {
   // Keeps trying until WiFi connects
   while (!wifiManager.isConnected()) {
     Serial.println("Waiting for WiFi connection...");
+    wifiManager.begin(); // triggers a new connection attempt
     vTaskDelay(pdMS_TO_TICKS(2000));  // retry every 2s
   }
 
