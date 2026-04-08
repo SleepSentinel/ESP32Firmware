@@ -5,11 +5,12 @@
 
 #include "display/DisplayTask.h"
 #include "processing/DataProcessor.h"
+#include "server/WiFiManager.h"
+#include "server/WebSocketServer.h"
+#include "sensors/AirQualityTask.h"
 #include "sensors/MotionTask.h"
 #include "sensors/PulseOximeterTask.h"
 #include "sensors/RoomTempTask.h"
-#include "server/WebSocketServer.h"
-#include "server/WiFiManager.h"
 #include "system/Config.h"
 
 namespace {
@@ -51,6 +52,7 @@ bool createTasks() {
   TaskHandle_t pulseOximeterTaskHandle = nullptr;
   TaskHandle_t roomTempTaskHandle = nullptr;
   TaskHandle_t motionTaskHandle = nullptr;
+  TaskHandle_t airQualityTaskHandle = nullptr;
   TaskHandle_t processingTaskHandle = nullptr;
   TaskHandle_t displayTaskHandle = nullptr;
   TaskHandle_t webServerTaskHandle = nullptr;
@@ -104,6 +106,20 @@ bool createTasks() {
     return false;
   }
 
+  if (xTaskCreate(AirQualityTask,
+                  "AirQualityTask",
+                  stackBytesToWords(
+                      SleepSentinel::Config::kAirQualityTaskStackBytes),
+                  nullptr,
+                  SleepSentinel::Config::kAirQualityTaskPriority,
+                  &airQualityTaskHandle) != pdPASS) {
+    vTaskDelete(motionTaskHandle);
+    vTaskDelete(roomTempTaskHandle);
+    vTaskDelete(pulseOximeterTaskHandle);
+    vTaskDelete(webServerTaskHandle);
+    return false;
+  }
+
   if (xTaskCreate(DataProcessorTask,
                   "DataProcessor",
                   stackBytesToWords(
@@ -111,6 +127,7 @@ bool createTasks() {
                   nullptr,
                   SleepSentinel::Config::kProcessingTaskPriority,
                   &processingTaskHandle) != pdPASS) {
+    vTaskDelete(airQualityTaskHandle);
     vTaskDelete(motionTaskHandle);
     vTaskDelete(roomTempTaskHandle);
     vTaskDelete(pulseOximeterTaskHandle);
@@ -126,6 +143,7 @@ bool createTasks() {
                   SleepSentinel::Config::kDisplayTaskPriority,
                   &displayTaskHandle) != pdPASS) {
     vTaskDelete(processingTaskHandle);
+    vTaskDelete(airQualityTaskHandle);
     vTaskDelete(motionTaskHandle);
     vTaskDelete(roomTempTaskHandle);
     vTaskDelete(pulseOximeterTaskHandle);

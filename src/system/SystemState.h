@@ -1,6 +1,18 @@
 #pragma once
+#include <stdint.h>
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
+
+enum class AirQualityLevel : uint8_t {
+  kUnknown,
+  kExcellent,
+  kGood,
+  kAverage,
+  kPoor,
+  kBad,
+  kDangerous,
+};
 
 struct SystemState {
   int heartRate;
@@ -16,6 +28,8 @@ struct SystemState {
   bool isMoving;
   bool isCrying;
   int airQuality;
+  bool airQualitySensorOk;
+  AirQualityLevel airQualityLevel;
 
   // Alerts
   bool alertHighHR;
@@ -31,6 +45,8 @@ extern SystemState systemState;
 extern SemaphoreHandle_t stateMutex;
 
 bool initSystemState();
+void setAirQualityReading(uint16_t rawValue, AirQualityLevel level);
+void setAirQualityError();
 void setRoomClimateReading(float temperatureC, float humidityPercent);
 void setRoomClimateError();
 SystemState getSystemStateSnapshot();
