@@ -55,7 +55,6 @@ bool createTasks() {
   TaskHandle_t webServerTaskHandle = nullptr;
 
   // (WiFi + WebSocket)
-  // ESP32 is dual core -> Pinned to Core pins this task to Core 0
   if (xTaskCreatePinnedToCore(
           WebServerTask,
           "WebServerTask",
@@ -70,7 +69,6 @@ bool createTasks() {
     return false;
   }
 
-  // Rest of Tasks share Core 1
   // RoomTemp task reads from DHT sensor
   if (xTaskCreate(RoomTempTask,
                   "RoomTempTask",
