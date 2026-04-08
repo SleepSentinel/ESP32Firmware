@@ -7,13 +7,14 @@
 #include "server/WebSocketServer.h"
 #include "system/Config.h"
 
-// ⏸ Disabled for now (will re-enable later)
 #include "sensors/RoomTempTask.h"
 #include "processing/DataProcessor.h"
 #include "display/DisplayTask.h"
 
 namespace {
 
+// Free RTOS Expects stack size in words, it is defined in bytes in Config.h
+// this converts it bytes -> words
 configSTACK_DEPTH_TYPE stackBytesToWords(uint16_t stackBytes) {
   return stackBytes / sizeof(StackType_t);
 }
@@ -45,15 +46,13 @@ void WebServerTask(void* pvParameters) {
 } // namespace
 
 bool createTasks() {
-  // COMMENTED OUT TASKS for testing only (enable later after PR)
-  /*
   TaskHandle_t roomTempTaskHandle = nullptr;
   TaskHandle_t processingTaskHandle = nullptr;
   TaskHandle_t displayTaskHandle = nullptr;
-  */
   TaskHandle_t webServerTaskHandle = nullptr;
 
   // (WiFi + WebSocket)
+  // ESP32 is dual core -> Pinned to Core pins this task to Core 0
   if (xTaskCreatePinnedToCore(
           WebServerTask,
           "WebServerTask",
@@ -68,9 +67,8 @@ bool createTasks() {
     return false;
   }
 
-  // COMMENTED OUT TASKS for testing only (enable later after PR)
-
-  /*
+  // Rest of Tasks share Core 1
+  // RoomTemp task reads from DHT sensor
   if (xTaskCreate(RoomTempTask,
                   "RoomTempTask",
                   stackBytesToWords(
@@ -103,7 +101,6 @@ bool createTasks() {
     vTaskDelete(roomTempTaskHandle);
     return false;
   }
-  */
 
   return true;
 }
