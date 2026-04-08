@@ -27,20 +27,22 @@ void WebServerTask(void* pvParameters) {
 
   wifiManager.begin();
 
-  if (wifiManager.isConnected()) {
-
-    wsServer.begin();
-
-    while (true) {
-      wsServer.run();   // non-blocking
-      vTaskDelay(pdMS_TO_TICKS(50));
-    }
-
-  } else {
-    Serial.println("WiFi failed, WebSocket server not started");
+  // Keeps trying until WiFi connects
+  while (!wifiManager.isConnected()) {
+    Serial.println("Waiting for WiFi connection...");
+    vTaskDelay(pdMS_TO_TICKS(2000));  // retry every 2s
   }
 
-  vTaskDelete(nullptr);
+  Serial.println("WiFi connected");
+
+  // Start WebSocket server AFTER WiFi is ready
+  wsServer.begin();
+
+  // Main loop (runs forever)
+  while (true) {
+    wsServer.run();   // non-blocking
+    vTaskDelay(pdMS_TO_TICKS(50));
+  }
 }
 
 } // namespace
