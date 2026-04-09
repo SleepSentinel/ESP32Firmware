@@ -14,8 +14,7 @@ private:
     AsyncWebSocket ws;
 
     void setupWebSocket();
-    void handleWebSocketMessage(void *arg, uint8_t *data, size_t len);
+    void handleWebSocketMessage(AsyncWebSocketClient *client, void *arg, uint8_t *data, size_t len);
 
     String generateDummyData(); // temporary will be replace with SystemState Data
 };
-
