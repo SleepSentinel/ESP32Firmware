@@ -6,18 +6,6 @@
 #include "system/Config.h"
 #include "system/Queues.h"
 
-namespace {
-
-void logReading(const PulseOximetryReading& reading) {
-  Serial.print("Heart rate: ");
-  Serial.print(reading.heartRate);
-  Serial.print(" bpm, SpO2: ");
-  Serial.print(reading.spo2);
-  Serial.println(" %");
-}
-
-}  // namespace
-
 void PulseOximeterTask(void* pvParameters) {
   (void)pvParameters;
 
@@ -33,10 +21,7 @@ void PulseOximeterTask(void* pvParameters) {
   while (true) {
     const PulseOximetryReading reading = pulseOximeterSensor.read();
 
-    if (reading.heartRateValid && reading.spo2Valid) {
-      logReading(reading);
-
-    } else if (!reading.heartRateValid && !reading.spo2Valid) {
+    if (!reading.heartRateValid && !reading.spo2Valid) {
       Serial.println("MAX30102 reading invalid");
     }
 
