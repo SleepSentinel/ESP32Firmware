@@ -1,5 +1,7 @@
 #include "DataProcessor.h"
 
+#include <Arduino.h>
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
@@ -27,6 +29,10 @@ void DataProcessorTask(void* pvParameters) {
       systemState.alertHighHR = (hr > 160);
       systemState.alertLowHR = (hr < 60);
 
+      Serial.print("Heart rate: ");
+      Serial.print(systemState.heartRate);
+      Serial.println(" bpm");
+
       xSemaphoreGive(stateMutex);
     }
 
@@ -34,6 +40,11 @@ void DataProcessorTask(void* pvParameters) {
       xSemaphoreTake(stateMutex, portMAX_DELAY);
 
       systemState.spo2 = spo2;
+      systemState.alertLowSpO2 = (spo2 < 95);
+
+      Serial.print("SpO2: ");
+      Serial.print(systemState.spo2);
+      Serial.println(" %");
 
       xSemaphoreGive(stateMutex);
     }

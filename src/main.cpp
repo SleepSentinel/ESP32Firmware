@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <Wire.h>
 
 #include "system/Config.h"
 #include "system/Queues.h"
@@ -20,6 +21,9 @@ void setup() {
   Serial.begin(SleepSentinel::Config::kSerialBaudRate);
   delay(500); //for wifi connection
   Serial.println("SleepSentinel boot (RTOS mode)");
+
+  Wire.begin(SleepSentinel::Config::kI2cSdaPin,
+             SleepSentinel::Config::kI2cSclPin);
 
   if (!initQueues()) {
     haltWithError("Queue initialization failed");

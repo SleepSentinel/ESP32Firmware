@@ -15,11 +15,14 @@ constexpr uint8_t kLcdColumns = 16;
 constexpr uint8_t kLcdRows = 2;
 constexpr unsigned long kStartupScreenDurationMs = 1000;
 constexpr unsigned long kSensorUpdateIntervalMs = 2000;
+constexpr unsigned long kPulseOximeterRateUpdateIntervalMs = 1000;
 constexpr unsigned long kDisplayUpdateIntervalMs = 500;
 constexpr uint8_t kRoomClimateQueueLength = 4;
+constexpr uint16_t kPulseOximeterTaskStackBytes = 8192;
 constexpr uint16_t kRoomTempTaskStackBytes = 4096;
 constexpr uint16_t kProcessingTaskStackBytes = 4096;
 constexpr uint16_t kDisplayTaskStackBytes = 4096;
+constexpr uint8_t kPulseOximeterTaskPriority = 1;
 
 //Task Priorities to be updated
 constexpr uint8_t kRoomTempTaskPriority = 1;

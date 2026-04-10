@@ -3,13 +3,15 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+#include "system/Config.h"
+#include "processing/DataProcessor.h"
+
 #include "server/WiFiManager.h"
 #include "server/WebSocketServer.h"
-#include "system/Config.h"
 
-#include "sensors/RoomTempTask.h"
-#include "processing/DataProcessor.h"
 #include "display/DisplayTask.h"
+#include "sensors/RoomTempTask.h"
+#include "sensors/PulseOximeterTask.h"
 
 namespace {
 
@@ -49,6 +51,7 @@ void WebServerTask(void* pvParameters) {
 } // namespace
 
 bool createTasks() {
+  TaskHandle_t pulseOximeterTaskHandle = nullptr;
   TaskHandle_t roomTempTaskHandle = nullptr;
   TaskHandle_t processingTaskHandle = nullptr;
   TaskHandle_t displayTaskHandle = nullptr;
@@ -69,6 +72,18 @@ bool createTasks() {
     return false;
   }
 
+  // PulseOximeter task reads from MAX30102 sensor
+  if (xTaskCreate(PulseOximeterTask,
+                  "PulseOximeterTask",
+                  stackBytesToWords(
+                      SleepSentinel::Config::kPulseOximeterTaskStackBytes),
+                  nullptr,
+                  SleepSentinel::Config::kPulseOximeterTaskPriority,
+                  &pulseOximeterTaskHandle) != pdPASS) {
+    return false;
+  }
+
+
   // RoomTemp task reads from DHT sensor
   if (xTaskCreate(RoomTempTask,
                   "RoomTempTask",
@@ -77,6 +92,7 @@ bool createTasks() {
                   nullptr,
                   SleepSentinel::Config::kRoomTempTaskPriority,
                   &roomTempTaskHandle) != pdPASS) {
+    vTaskDelete(pulseOximeterTaskHandle);
     vTaskDelete(webServerTaskHandle);
     return false;
   }
@@ -89,6 +105,7 @@ bool createTasks() {
                   SleepSentinel::Config::kProcessingTaskPriority,
                   &processingTaskHandle) != pdPASS) {
     vTaskDelete(roomTempTaskHandle);
+    vTaskDelete(pulseOximeterTaskHandle);
     vTaskDelete(webServerTaskHandle);
     return false;
   }
@@ -102,6 +119,7 @@ bool createTasks() {
                   &displayTaskHandle) != pdPASS) {
     vTaskDelete(processingTaskHandle);
     vTaskDelete(roomTempTaskHandle);
+    vTaskDelete(pulseOximeterTaskHandle);
     vTaskDelete(webServerTaskHandle);
     return false;
   }

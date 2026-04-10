@@ -18,6 +18,7 @@ SystemState defaultSystemState() {
       false,
       false,
       false,
+      false,
   };
 }
 }  // namespace

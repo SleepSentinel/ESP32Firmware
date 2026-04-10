@@ -34,8 +34,6 @@ LcdDisplay::LcdDisplay()
       lastLine1_{0} {}
 
 void LcdDisplay::begin() {
-  Wire.begin(SleepSentinel::Config::kI2cSdaPin,
-             SleepSentinel::Config::kI2cSclPin);
   lcd_.init();
   lcd_.backlight();
   lcd_.clear();
