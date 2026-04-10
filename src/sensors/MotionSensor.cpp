@@ -67,6 +67,7 @@ bool isSupportedMotionDeviceId(uint8_t deviceId) {
     case 0x69:
     case 0x70:
     case 0x71:
+    case 0x72:
     case 0x73:
     case 0x98:
       return true;
@@ -83,8 +84,9 @@ const char* motionDeviceName(uint8_t deviceId) {
     case 0x69:
     case 0x70:
     case 0x71:
+    case 0x72:
     case 0x73:
-      return "MPU6050-compatible";
+      return "MPU-family-compatible";
     default:
       return "unknown";
   }

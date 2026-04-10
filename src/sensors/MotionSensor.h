@@ -14,7 +14,7 @@ class MotionSensor {
   MotionSensor();
 
   bool begin();
- MotionReading read();
+  MotionReading read();
 
  private:
   float accelLsbPerG() const;
