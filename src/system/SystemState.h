@@ -9,6 +9,10 @@ struct SystemState {
   float roomTemperature;
   float roomHumidity;
   bool roomSensorOk;
+  float motionAccelX;
+  float motionAccelY;
+  float motionAccelZ;
+  bool motionSensorOk;
   bool isMoving;
   bool isCrying;
   int airQuality;

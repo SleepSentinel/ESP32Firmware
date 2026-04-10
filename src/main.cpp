@@ -1,7 +1,7 @@
 #include <Arduino.h>
-#include <Wire.h>
 
 #include "system/Config.h"
+#include "system/I2cBus.h"
 #include "system/Queues.h"
 #include "system/SystemState.h"
 #include "system/TaskManager.h"
@@ -19,11 +19,8 @@ namespace {
 
 void setup() {
   Serial.begin(SleepSentinel::Config::kSerialBaudRate);
-  delay(500); //for wifi connection
+  delay(500);  // for wifi connection
   Serial.println("SleepSentinel boot (RTOS mode)");
-
-  Wire.begin(SleepSentinel::Config::kI2cSdaPin,
-             SleepSentinel::Config::kI2cSclPin);
 
   if (!initQueues()) {
     haltWithError("Queue initialization failed");
@@ -31,6 +28,10 @@ void setup() {
 
   if (!initSystemState()) {
     haltWithError("System state initialization failed");
+  }
+
+  if (!initI2cBus()) {
+    haltWithError("I2C bus initialization failed");
   }
 
   if (!createTasks()) {

@@ -1,5 +1,6 @@
 #include "Queues.h"
 
+#include "sensors/MotionSensor.h"
 #include "sensors/RoomTempSensor.h"
 #include "system/Config.h"
 
@@ -37,7 +38,7 @@ bool initQueues() {
   }
 
   if (motionQueue == nullptr) {
-    motionQueue = xQueueCreate(10, sizeof(bool));
+    motionQueue = xQueueCreate(10, sizeof(MotionReading));
   }
 
   if (soundQueue == nullptr) {
@@ -49,9 +50,9 @@ bool initQueues() {
   }
 
   if (roomClimateQueue == nullptr) {
-  roomClimateQueue = xQueueCreate(
-      SleepSentinel::Config::kRoomClimateQueueLength,
-      sizeof(RoomClimateReading));
+    roomClimateQueue = xQueueCreate(
+        SleepSentinel::Config::kRoomClimateQueueLength,
+        sizeof(RoomClimateReading));
   }
 
   return hrQueue != nullptr && spo2Queue != nullptr &&
