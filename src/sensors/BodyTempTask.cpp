@@ -8,6 +8,10 @@
 
 namespace {
 
+bool isValidTemperature(float temp) {
+  return temp >= 00.0f && temp <= 55.0f;
+}
+
 void logReading(float temperature) {
   Serial.print("Body temperature: ");
   Serial.print(temperature, 2);
@@ -27,16 +31,17 @@ void BodyTempTask(void* pvParameters) {
   while (true) {
     const float temperature = bodyTempSensor.read();
 
-    // Log reading (for debugging, consistent with other sensors)
-    logReading(temperature);
+    if (isValidTemperature(temperature)) {
+      logReading(temperature);
 
-    // Send to queue
-    if (bodyTempQueue == nullptr ||
-        xQueueSend(bodyTempQueue, &temperature, 0) != pdPASS) {
-      Serial.println("Body temp queue send failed");
+      if (bodyTempQueue == nullptr ||
+          xQueueSend(bodyTempQueue, &temperature, 0) != pdPASS) {
+        Serial.println("Body temp queue send failed");
+      }
+    } else {
+      Serial.println("Invalid body temperature reading");
     }
 
-    // Maintain fixed sampling interval
     vTaskDelayUntil(
         &lastWakeTime,
         pdMS_TO_TICKS(SleepSentinel::Config::kSensorUpdateIntervalMs));
