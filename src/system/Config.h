@@ -65,8 +65,8 @@ constexpr uint8_t kDisplayTaskPriority = 1;
 
 // Server info.
 // DO NOT PUSH YOUR WiFi info here; update locally only.
-constexpr const char* WIFI_SSID = "*******";
-constexpr const char* WIFI_PASSWORD = "******";
+constexpr const char* WIFI_SSID = "**********";
+constexpr const char* WIFI_PASSWORD = "**********";
 
 constexpr uint16_t kWebServerTaskStackBytes = 8192;
 constexpr UBaseType_t kWebServerTaskPriority = 1;
