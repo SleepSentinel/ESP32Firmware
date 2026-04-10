@@ -54,7 +54,7 @@ constexpr uint16_t kMotionTaskStackBytes = 4096;
 constexpr uint16_t kAirQualityTaskStackBytes = 4096;
 constexpr uint16_t kProcessingTaskStackBytes = 4096;
 constexpr uint16_t kDisplayTaskStackBytes = 4096;
-constexpr uint8_t kMax30205Address = 0x48;
+constexpr uint8_t kMax30205Address = 0x4C;
 constexpr uint16_t kBodyTempTaskStackBytes = 4096;
 
 
