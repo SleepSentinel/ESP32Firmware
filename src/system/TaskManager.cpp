@@ -11,6 +11,7 @@
 #include "sensors/MotionTask.h"
 #include "sensors/PulseOximeterTask.h"
 #include "sensors/RoomTempTask.h"
+#include "sensors/BodyTempTask.h"
 #include "system/Config.h"
 
 namespace {
@@ -56,6 +57,7 @@ bool createTasks() {
   TaskHandle_t processingTaskHandle = nullptr;
   TaskHandle_t displayTaskHandle = nullptr;
   TaskHandle_t webServerTaskHandle = nullptr;
+  TaskHandle_t bodyTempTaskHandle = nullptr;
 
   if (xTaskCreatePinnedToCore(
           WebServerTask,
@@ -88,6 +90,19 @@ bool createTasks() {
                   nullptr,
                   SleepSentinel::Config::kRoomTempTaskPriority,
                   &roomTempTaskHandle) != pdPASS) {
+    vTaskDelete(pulseOximeterTaskHandle);
+    vTaskDelete(webServerTaskHandle);
+    return false;
+  }
+
+  if (xTaskCreate(BodyTempTask,
+                  "BodyTempTask",
+                  stackBytesToWords(
+                      SleepSentinel::Config::kBodyTempTaskStackBytes),
+                  nullptr,
+                  SleepSentinel::Config::kBodyTempTaskPriority,
+                  &bodyTempTaskHandle) != pdPASS) {
+    vTaskDelete(roomTempTaskHandle);
     vTaskDelete(pulseOximeterTaskHandle);
     vTaskDelete(webServerTaskHandle);
     return false;

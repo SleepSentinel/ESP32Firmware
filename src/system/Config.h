@@ -54,7 +54,9 @@ constexpr uint16_t kMotionTaskStackBytes = 4096;
 constexpr uint16_t kAirQualityTaskStackBytes = 4096;
 constexpr uint16_t kProcessingTaskStackBytes = 4096;
 constexpr uint16_t kDisplayTaskStackBytes = 4096;
-constexpr uint8_t kPulseOximeterTaskPriority = 1;
+constexpr uint8_t kMax30205Address = 0x48;
+constexpr uint16_t kBodyTempTaskStackBytes = 4096;
+
 
 // Task priorities to be updated.
 constexpr uint8_t kRoomTempTaskPriority = 1;
@@ -62,6 +64,8 @@ constexpr uint8_t kMotionTaskPriority = 1;
 constexpr uint8_t kAirQualityTaskPriority = 1;
 constexpr uint8_t kProcessingTaskPriority = 1;
 constexpr uint8_t kDisplayTaskPriority = 1;
+constexpr uint8_t kPulseOximeterTaskPriority = 1;
+constexpr uint8_t kBodyTempTaskPriority = 1;
 
 // Server info.
 // DO NOT PUSH YOUR WiFi info here; update locally only.
