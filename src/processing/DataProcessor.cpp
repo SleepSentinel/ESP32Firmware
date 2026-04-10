@@ -6,6 +6,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
+#include "sensors/AirQualitySensor.h"
 #include "sensors/MotionSensor.h"
 #include "sensors/RoomTempSensor.h"
 #include "system/Config.h"
@@ -77,6 +78,30 @@ void logMotionState(bool isMoving) {
   Serial.println(isMoving ? "true" : "false");
 }
 
+AirQualityLevel classifyAirQuality(uint16_t rawValue) {
+  if (rawValue <= 150) {
+    return AirQualityLevel::kExcellent;
+  }
+
+  if (rawValue <= 300) {
+    return AirQualityLevel::kGood;
+  }
+
+  if (rawValue <= 500) {
+    return AirQualityLevel::kAverage;
+  }
+
+  if (rawValue <= 700) {
+    return AirQualityLevel::kPoor;
+  }
+
+  if (rawValue <= 900) {
+    return AirQualityLevel::kBad;
+  }
+
+  return AirQualityLevel::kDangerous;
+}
+
 }  // namespace
 
 void DataProcessorTask(void* pvParameters) {
@@ -88,7 +113,7 @@ void DataProcessorTask(void* pvParameters) {
   float roomTemp = 0.0f;
   MotionReading motionReading = {0.0f, 0.0f, 0.0f, false};
   int sound = 0;
-  int air = 0;
+  AirQualityReading airQualityReading = {0, false};
   RoomClimateReading roomClimateReading = {0.0f, 0.0f, false};
   MotionDetectionState motionDetectionState;
 
@@ -177,12 +202,14 @@ void DataProcessorTask(void* pvParameters) {
       xSemaphoreGive(stateMutex);
     }
 
-    if (xQueueReceive(airQueue, &air, 0) == pdPASS) {
-      xSemaphoreTake(stateMutex, portMAX_DELAY);
-
-      systemState.airQuality = air;
-
-      xSemaphoreGive(stateMutex);
+    if (xQueueReceive(airQueue, &airQualityReading, 0) == pdPASS) {
+      if (airQualityReading.isValid) {
+        setAirQualityReading(
+            airQualityReading.rawValue,
+            classifyAirQuality(airQualityReading.rawValue));
+      } else {
+        setAirQualityError();
+      }
     }
 
     if (xQueueReceive(roomClimateQueue, &roomClimateReading, 0) == pdPASS) {

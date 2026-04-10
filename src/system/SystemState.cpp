@@ -17,6 +17,8 @@ SystemState defaultSystemState() {
       false,
       0,
       false,
+      AirQualityLevel::kUnknown,
+      false,
       false,
       false,
       false,
@@ -43,6 +45,33 @@ bool initSystemState() {
 }
 
 // Locks System State -> Updates shared state -> Unlocks System State
+void setAirQualityReading(uint16_t rawValue, AirQualityLevel level) {
+  if (stateMutex != nullptr) {
+    xSemaphoreTake(stateMutex, portMAX_DELAY);
+  }
+
+  systemState.airQuality = rawValue;
+  systemState.airQualitySensorOk = true;
+  systemState.airQualityLevel = level;
+
+  if (stateMutex != nullptr) {
+    xSemaphoreGive(stateMutex);
+  }
+}
+
+void setAirQualityError() {
+  if (stateMutex != nullptr) {
+    xSemaphoreTake(stateMutex, portMAX_DELAY);
+  }
+
+  systemState.airQualitySensorOk = false;
+  systemState.airQualityLevel = AirQualityLevel::kUnknown;
+
+  if (stateMutex != nullptr) {
+    xSemaphoreGive(stateMutex);
+  }
+}
+
 void setRoomClimateReading(float temperatureC, float humidityPercent) {
   if (stateMutex != nullptr) {
     xSemaphoreTake(stateMutex, portMAX_DELAY);

@@ -1,5 +1,6 @@
 #include "Queues.h"
 
+#include "sensors/AirQualitySensor.h"
 #include "sensors/MotionSensor.h"
 #include "sensors/RoomTempSensor.h"
 #include "system/Config.h"
@@ -46,7 +47,7 @@ bool initQueues() {
   }
 
   if (airQueue == nullptr) {
-    airQueue = xQueueCreate(10, sizeof(int));
+    airQueue = xQueueCreate(10, sizeof(AirQualityReading));
   }
 
   if (roomClimateQueue == nullptr) {
