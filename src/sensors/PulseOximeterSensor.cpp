@@ -1,6 +1,7 @@
 #include "PulseOximeterSensor.h"
 
 #include "spo2_algorithm.h"
+#include "system/I2cBus.h"
 
 namespace {
 
@@ -11,12 +12,33 @@ constexpr int kSampleRate = 100;
 constexpr int kPulseWidth = 411;
 constexpr int kAdcRange = 4096;
 
+class I2cBusLockGuard {
+ public:
+  I2cBusLockGuard() : locked_(lockI2cBus(portMAX_DELAY)) {}
+
+  ~I2cBusLockGuard() {
+    if (locked_) {
+      unlockI2cBus();
+    }
+  }
+
+  bool locked() const { return locked_; }
+
+ private:
+  bool locked_;
+};
+
 }  // namespace
 
 PulseOximeterSensor::PulseOximeterSensor()
     : sensor_(), initialized_(false), initialBufferFilled_(false) {}
 
 bool PulseOximeterSensor::begin() {
+  I2cBusLockGuard lock;
+  if (!lock.locked()) {
+    return false;
+  }
+
   if (!sensor_.begin(Wire, I2C_SPEED_FAST)) {
     return false;
   }
@@ -32,6 +54,11 @@ bool PulseOximeterSensor::begin() {
 bool PulseOximeterSensor::waitForNewSample() {
   uint16_t attempts = 0;
   while (!sensor_.available()) {
+    I2cBusLockGuard lock;
+    if (!lock.locked()) {
+      return false;
+    }
+
     sensor_.check();
     ++attempts;
     if (attempts > 4000) {
@@ -49,8 +76,8 @@ bool PulseOximeterSensor::fillBufferRange(int startIndex, int endIndex) {
       return false;
     }
 
-    redBuffer_[i] = sensor_.getRed();
-    irBuffer_[i] = sensor_.getIR();
+    redBuffer_[i] = sensor_.getFIFORed();
+    irBuffer_[i] = sensor_.getFIFOIR();
     sensor_.nextSample();
   }
 
