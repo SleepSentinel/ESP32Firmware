@@ -54,12 +54,15 @@ bool PulseOximeterSensor::begin() {
 bool PulseOximeterSensor::waitForNewSample() {
   uint16_t attempts = 0;
   while (!sensor_.available()) {
-    I2cBusLockGuard lock;
-    if (!lock.locked()) {
-      return false;
+    {
+      I2cBusLockGuard lock;
+      if (!lock.locked()) {
+        return false;
+      }
+
+      sensor_.check();
     }
 
-    sensor_.check();
     ++attempts;
     if (attempts > 4000) {
       return false;

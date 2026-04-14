@@ -25,6 +25,24 @@ struct AlertSnapshot {
   bool alertLowRoomTemp;
 };
 
+struct AlertChannelValidity {
+  bool heartRate;
+  bool spo2;
+  bool bodyTemperature;
+  bool roomTemperature;
+};
+
+struct AlertFreshnessState {
+  bool hasHeartRateReading = false;
+  uint32_t lastHeartRateUpdateMs = 0;
+  bool hasSpO2Reading = false;
+  uint32_t lastSpO2UpdateMs = 0;
+  bool hasBodyTemperatureReading = false;
+  uint32_t lastBodyTemperatureUpdateMs = 0;
+  bool hasRoomTemperatureReading = false;
+  uint32_t lastRoomTemperatureUpdateMs = 0;
+};
+
 struct MotionDetectionState {
   MotionReading previousReading = {0.0f, 0.0f, 0.0f, false};
   bool hasPreviousReading = false;
@@ -88,20 +106,46 @@ void logMotionState(bool isMoving) {
   Serial.println(isMoving ? "true" : "false");
 }
 
-AlertSnapshot computeAlertSnapshot(const SystemState& state) {
+constexpr uint32_t kAlertFreshnessTimeoutMs =
+    SleepSentinel::Config::kSensorUpdateIntervalMs * 3 + 1000;
+
+bool isFreshReading(bool hasReading, uint32_t lastUpdateMs, uint32_t nowMs) {
+  return hasReading && (nowMs - lastUpdateMs) <= kAlertFreshnessTimeoutMs;
+}
+
+AlertChannelValidity computeAlertChannelValidity(
+    const AlertFreshnessState& freshnessState,
+    const SystemState& state,
+    uint32_t nowMs) {
   return {
-      state.heartRate > 160,
-      state.heartRate < 60,
-      state.spo2 < 95,
-      state.bodyTemperature > 38.0f,
-      state.bodyTemperature < 35.0f,
-      state.roomTemperature > 30.0f,
-      state.roomTemperature < 18.0f,
+      isFreshReading(freshnessState.hasHeartRateReading,
+                     freshnessState.lastHeartRateUpdateMs, nowMs),
+      isFreshReading(freshnessState.hasSpO2Reading,
+                     freshnessState.lastSpO2UpdateMs, nowMs),
+      isFreshReading(freshnessState.hasBodyTemperatureReading,
+                     freshnessState.lastBodyTemperatureUpdateMs, nowMs),
+      state.roomSensorOk &&
+          isFreshReading(freshnessState.hasRoomTemperatureReading,
+                         freshnessState.lastRoomTemperatureUpdateMs, nowMs),
   };
 }
 
-bool updateAlertStateLocked(SystemState* state) {
-  const AlertSnapshot nextAlerts = computeAlertSnapshot(*state);
+AlertSnapshot computeAlertSnapshot(const SystemState& state,
+                                   const AlertChannelValidity& validity) {
+  return {
+      validity.heartRate && state.heartRate > 160,
+      validity.heartRate && state.heartRate < 60,
+      validity.spo2 && state.spo2 < 95,
+      validity.bodyTemperature && state.bodyTemperature > 38.0f,
+      validity.bodyTemperature && state.bodyTemperature < 35.0f,
+      validity.roomTemperature && state.roomTemperature > 30.0f,
+      validity.roomTemperature && state.roomTemperature < 18.0f,
+  };
+}
+
+bool updateAlertStateLocked(SystemState* state,
+                            const AlertChannelValidity& validity) {
+  const AlertSnapshot nextAlerts = computeAlertSnapshot(*state, validity);
   const bool changed =
       state->alertHighHR != nextAlerts.alertHighHR ||
       state->alertLowHR != nextAlerts.alertLowHR ||
@@ -210,13 +254,21 @@ void DataProcessorTask(void* pvParameters) {
   AirQualityReading airQualityReading = {0, false};
   RoomClimateReading roomClimateReading = {0.0f, 0.0f, false};
   MotionDetectionState motionDetectionState;
+  AlertFreshnessState alertFreshnessState;
 
   while (true) {
+    const uint32_t nowMs = static_cast<uint32_t>(millis());
+
     if (xQueueReceive(hrQueue, &hr, 0) == pdPASS) {
       xSemaphoreTake(stateMutex, portMAX_DELAY);
 
       systemState.heartRate = hr;
-      const bool alertsChanged = updateAlertStateLocked(&systemState);
+      alertFreshnessState.hasHeartRateReading = hr > 0;
+      alertFreshnessState.lastHeartRateUpdateMs = nowMs;
+      const AlertChannelValidity validity = computeAlertChannelValidity(
+          alertFreshnessState, systemState, nowMs);
+      const bool alertsChanged =
+          updateAlertStateLocked(&systemState, validity);
       const SystemState alertSnapshot = systemState;
 
       Serial.print("Heart rate: ");
@@ -234,7 +286,12 @@ void DataProcessorTask(void* pvParameters) {
       xSemaphoreTake(stateMutex, portMAX_DELAY);
 
       systemState.spo2 = spo2;
-      const bool alertsChanged = updateAlertStateLocked(&systemState);
+      alertFreshnessState.hasSpO2Reading = spo2 > 0;
+      alertFreshnessState.lastSpO2UpdateMs = nowMs;
+      const AlertChannelValidity validity = computeAlertChannelValidity(
+          alertFreshnessState, systemState, nowMs);
+      const bool alertsChanged =
+          updateAlertStateLocked(&systemState, validity);
       const SystemState alertSnapshot = systemState;
 
       Serial.print("SpO2: ");
@@ -252,7 +309,12 @@ void DataProcessorTask(void* pvParameters) {
       xSemaphoreTake(stateMutex, portMAX_DELAY);
 
       systemState.bodyTemperature = bodyTemp;
-      const bool alertsChanged = updateAlertStateLocked(&systemState);
+      alertFreshnessState.hasBodyTemperatureReading = bodyTemp > 0.0f;
+      alertFreshnessState.lastBodyTemperatureUpdateMs = nowMs;
+      const AlertChannelValidity validity = computeAlertChannelValidity(
+          alertFreshnessState, systemState, nowMs);
+      const bool alertsChanged =
+          updateAlertStateLocked(&systemState, validity);
       const SystemState alertSnapshot = systemState;
 
       xSemaphoreGive(stateMutex);
@@ -266,7 +328,13 @@ void DataProcessorTask(void* pvParameters) {
       xSemaphoreTake(stateMutex, portMAX_DELAY);
 
       systemState.roomTemperature = roomTemp;
-      const bool alertsChanged = updateAlertStateLocked(&systemState);
+      systemState.roomSensorOk = true;
+      alertFreshnessState.hasRoomTemperatureReading = roomTemp > 0.0f;
+      alertFreshnessState.lastRoomTemperatureUpdateMs = nowMs;
+      const AlertChannelValidity validity = computeAlertChannelValidity(
+          alertFreshnessState, systemState, nowMs);
+      const bool alertsChanged =
+          updateAlertStateLocked(&systemState, validity);
       const SystemState alertSnapshot = systemState;
 
       xSemaphoreGive(stateMutex);
@@ -324,12 +392,42 @@ void DataProcessorTask(void* pvParameters) {
     }
 
     if (xQueueReceive(roomClimateQueue, &roomClimateReading, 0) == pdPASS) {
+      xSemaphoreTake(stateMutex, portMAX_DELAY);
+
       if (roomClimateReading.isValid) {
-        setRoomClimateReading(roomClimateReading.temperatureC,
-                              roomClimateReading.humidityPercent);
+        systemState.roomTemperature = roomClimateReading.temperatureC;
+        systemState.roomHumidity = roomClimateReading.humidityPercent;
+        systemState.roomSensorOk = true;
+        alertFreshnessState.hasRoomTemperatureReading =
+            roomClimateReading.temperatureC > 0.0f;
+        alertFreshnessState.lastRoomTemperatureUpdateMs = nowMs;
       } else {
-        setRoomClimateError();
+        systemState.roomSensorOk = false;
+        alertFreshnessState.hasRoomTemperatureReading = false;
       }
+
+      const AlertChannelValidity validity = computeAlertChannelValidity(
+          alertFreshnessState, systemState, nowMs);
+      const bool alertsChanged =
+          updateAlertStateLocked(&systemState, validity);
+      const SystemState alertSnapshot = systemState;
+
+      xSemaphoreGive(stateMutex);
+
+      if (alertsChanged) {
+        logAlertTransition(alertSnapshot);
+      }
+    }
+
+    xSemaphoreTake(stateMutex, portMAX_DELAY);
+    const AlertChannelValidity validity =
+        computeAlertChannelValidity(alertFreshnessState, systemState, nowMs);
+    const bool alertsChanged = updateAlertStateLocked(&systemState, validity);
+    const SystemState alertSnapshot = systemState;
+    xSemaphoreGive(stateMutex);
+
+    if (alertsChanged) {
+      logAlertTransition(alertSnapshot);
     }
 
     vTaskDelay(pdMS_TO_TICKS(10));
