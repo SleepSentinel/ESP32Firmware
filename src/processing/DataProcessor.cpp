@@ -15,6 +15,16 @@
 
 namespace {
 
+struct AlertSnapshot {
+  bool alertHighHR;
+  bool alertLowHR;
+  bool alertLowSpO2;
+  bool alertHighBodyTemp;
+  bool alertLowBodyTemp;
+  bool alertHighRoomTemp;
+  bool alertLowRoomTemp;
+};
+
 struct MotionDetectionState {
   MotionReading previousReading = {0.0f, 0.0f, 0.0f, false};
   bool hasPreviousReading = false;
@@ -78,6 +88,90 @@ void logMotionState(bool isMoving) {
   Serial.println(isMoving ? "true" : "false");
 }
 
+AlertSnapshot computeAlertSnapshot(const SystemState& state) {
+  return {
+      state.heartRate > 160,
+      state.heartRate < 60,
+      state.spo2 < 95,
+      state.bodyTemperature > 38.0f,
+      state.bodyTemperature < 35.0f,
+      state.roomTemperature > 30.0f,
+      state.roomTemperature < 18.0f,
+  };
+}
+
+bool updateAlertStateLocked(SystemState* state) {
+  const AlertSnapshot nextAlerts = computeAlertSnapshot(*state);
+  const bool changed =
+      state->alertHighHR != nextAlerts.alertHighHR ||
+      state->alertLowHR != nextAlerts.alertLowHR ||
+      state->alertLowSpO2 != nextAlerts.alertLowSpO2 ||
+      state->alertHighBodyTemp != nextAlerts.alertHighBodyTemp ||
+      state->alertLowBodyTemp != nextAlerts.alertLowBodyTemp ||
+      state->alertHighRoomTemp != nextAlerts.alertHighRoomTemp ||
+      state->alertLowRoomTemp != nextAlerts.alertLowRoomTemp;
+
+  if (!changed) {
+    return false;
+  }
+
+  state->alertHighHR = nextAlerts.alertHighHR;
+  state->alertLowHR = nextAlerts.alertLowHR;
+  state->alertLowSpO2 = nextAlerts.alertLowSpO2;
+  state->alertHighBodyTemp = nextAlerts.alertHighBodyTemp;
+  state->alertLowBodyTemp = nextAlerts.alertLowBodyTemp;
+  state->alertHighRoomTemp = nextAlerts.alertHighRoomTemp;
+  state->alertLowRoomTemp = nextAlerts.alertLowRoomTemp;
+  state->alertVersion++;
+  state->lastAlertChangeMs = static_cast<uint32_t>(millis());
+
+  return true;
+}
+
+void logAlertTransition(const SystemState& state) {
+  Serial.print("Alert version: ");
+  Serial.print(state.alertVersion);
+  Serial.print(" active=");
+
+  bool first = true;
+  auto appendAlert = [&first](const char* name) {
+    if (!first) {
+      Serial.print(",");
+    }
+    Serial.print(name);
+    first = false;
+  };
+
+  if (state.alertHighHR) {
+    appendAlert("highHR");
+  }
+  if (state.alertLowHR) {
+    appendAlert("lowHR");
+  }
+  if (state.alertLowSpO2) {
+    appendAlert("lowSpO2");
+  }
+  if (state.alertHighBodyTemp) {
+    appendAlert("highBodyTemp");
+  }
+  if (state.alertLowBodyTemp) {
+    appendAlert("lowBodyTemp");
+  }
+  if (state.alertHighRoomTemp) {
+    appendAlert("highRoomTemp");
+  }
+  if (state.alertLowRoomTemp) {
+    appendAlert("lowRoomTemp");
+  }
+
+  if (first) {
+    Serial.print("none");
+  }
+
+  Serial.print(" changedAtMs=");
+  Serial.println(state.lastAlertChangeMs);
+}
+
 AirQualityLevel classifyAirQuality(uint16_t rawValue) {
   if (rawValue <= 150) {
     return AirQualityLevel::kExcellent;
@@ -122,47 +216,64 @@ void DataProcessorTask(void* pvParameters) {
       xSemaphoreTake(stateMutex, portMAX_DELAY);
 
       systemState.heartRate = hr;
-      systemState.alertHighHR = (hr > 160);
-      systemState.alertLowHR = (hr < 60);
+      const bool alertsChanged = updateAlertStateLocked(&systemState);
+      const SystemState alertSnapshot = systemState;
 
       Serial.print("Heart rate: ");
       Serial.print(systemState.heartRate);
       Serial.println(" bpm");
 
       xSemaphoreGive(stateMutex);
+
+      if (alertsChanged) {
+        logAlertTransition(alertSnapshot);
+      }
     }
 
     if (xQueueReceive(spo2Queue, &spo2, 0) == pdPASS) {
       xSemaphoreTake(stateMutex, portMAX_DELAY);
 
       systemState.spo2 = spo2;
-      systemState.alertLowSpO2 = (spo2 < 95);
+      const bool alertsChanged = updateAlertStateLocked(&systemState);
+      const SystemState alertSnapshot = systemState;
 
       Serial.print("SpO2: ");
       Serial.print(systemState.spo2);
       Serial.println(" %");
 
       xSemaphoreGive(stateMutex);
+
+      if (alertsChanged) {
+        logAlertTransition(alertSnapshot);
+      }
     }
 
     if (xQueueReceive(bodyTempQueue, &bodyTemp, 0) == pdPASS) {
       xSemaphoreTake(stateMutex, portMAX_DELAY);
 
       systemState.bodyTemperature = bodyTemp;
-      systemState.alertHighBodyTemp = (bodyTemp > 38.0f);
-      systemState.alertLowBodyTemp = (bodyTemp < 35.0f);
+      const bool alertsChanged = updateAlertStateLocked(&systemState);
+      const SystemState alertSnapshot = systemState;
 
       xSemaphoreGive(stateMutex);
+
+      if (alertsChanged) {
+        logAlertTransition(alertSnapshot);
+      }
     }
 
     if (xQueueReceive(roomTempQueue, &roomTemp, 0) == pdPASS) {
       xSemaphoreTake(stateMutex, portMAX_DELAY);
 
       systemState.roomTemperature = roomTemp;
-      systemState.alertHighRoomTemp = (roomTemp > 30.0f);
-      systemState.alertLowRoomTemp = (roomTemp < 18.0f);
+      const bool alertsChanged = updateAlertStateLocked(&systemState);
+      const SystemState alertSnapshot = systemState;
 
       xSemaphoreGive(stateMutex);
+
+      if (alertsChanged) {
+        logAlertTransition(alertSnapshot);
+      }
     }
 
     if (xQueueReceive(motionQueue, &motionReading, 0) == pdPASS) {
