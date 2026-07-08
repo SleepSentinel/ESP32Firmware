@@ -39,6 +39,8 @@ struct SystemState {
   bool alertLowBodyTemp;
   bool alertHighRoomTemp;
   bool alertLowRoomTemp;
+  uint32_t alertVersion;
+  uint32_t lastAlertChangeMs;
 };
 
 extern SystemState systemState;
